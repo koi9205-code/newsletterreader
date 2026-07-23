@@ -187,6 +187,7 @@ async function loadList(reset) {
     state.emails = [];
     state.nextPageToken = null;
     state.activeId = null;
+    el.screenApp.classList.remove('reading');
     el.emailList.innerHTML = '<div class="list-empty">불러오는 중...</div>';
   }
 
@@ -327,12 +328,16 @@ async function toggleBookmark(id) {
 async function openEmail(id) {
   state.activeId = id;
   renderList();
+  el.screenApp.classList.add('reading');
 
   const email = state.emails.find(e => e.id === id);
   if (!email) return;
 
   el.reader.innerHTML = `
     <div class="reader-info">
+      <button class="reader-back" id="readerBackBtn" aria-label="목록으로">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      </button>
       <div class="reader-avatar" style="background:${email.color}">${escapeHtml(email.sender.slice(0, 1))}</div>
       <div class="reader-text">
         <div class="reader-subject">${escapeHtml(email.subject)}</div>
@@ -362,6 +367,7 @@ async function openEmail(id) {
 
   document.getElementById('bookmarkBtn').addEventListener('click', () => toggleBookmarkFromReader(id));
   document.getElementById('unreadBtn').addEventListener('click', () => toggleUnreadFromReader(id));
+  document.getElementById('readerBackBtn').addEventListener('click', () => el.screenApp.classList.remove('reading'));
 
   try {
     const message = await gmailFetch(`/messages/${id}?format=full`);

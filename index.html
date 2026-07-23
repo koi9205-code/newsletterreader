@@ -322,6 +322,26 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 .reader-body { flex: 1; overflow: hidden; margin: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); position: relative; }
 .reader-frame { width: 100%; height: 100%; border: none; display: block; }
 .reader-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 12.5px; background: var(--surface); }
+
+.reader-back {
+  display: none;
+  align-items: center; justify-content: center;
+  width: 30px; height: 30px; flex-shrink: 0; margin-top: 1px;
+  border: none; background: transparent; color: var(--text-2); cursor: pointer; border-radius: 5px;
+}
+.reader-back:hover { background: var(--surface-2); color: var(--text-1); }
+
+/* ── Mobile layout (phones) ──────────────────────────────── */
+@media (max-width: 780px) {
+  .sidebar { width: 100%; border-right: none; }
+  .reader { display: none; position: absolute; inset: 0; background: var(--bg); }
+  .reader-back { display: flex; }
+  .app.reading .sidebar { display: none; }
+  .app.reading .reader { display: flex; }
+  .body { position: relative; }
+  .reader-body { margin: 10px; }
+  .reader-info { padding: 12px 14px; }
+}
 </style>
 </head>
 <body>
