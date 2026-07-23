@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>뉴스레터 리더</title>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<style>
+/* ── Design tokens ───────────────────────────────────────── */
+:root {
+  --bg:         #F2F1EE;
+  --surface:    #FFFFFF;
+  --surface-2:  #F8F7F5;
+  --border:     #E3E1DC;
+  --border-2:   #D4D2CC;
+  --text-1:     #1C1B18;
+  --text-2:     #6E6B65;
+  --text-3:     #9B9793;
+  --accent:     #C5472A;
+  --accent-bg:  #FBF0ED;
+  --shadow-md:  0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #131210; --surface: #1E1D1A; --surface-2: #252420;
+    --border: #2E2C28; --border-2: #3A3834;
+    --text-1: #EDEBE7; --text-2: #8A877F; --text-3: #5E5C57;
+    --accent: #D9573C; --accent-bg: #261A16;
+    --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
+  }
+}
+:root[data-theme="light"] {
+  --bg: #F2F1EE; --surface: #FFFFFF; --surface-2: #F8F7F5;
+  --border: #E3E1DC; --border-2: #D4D2CC;
+  --text-1: #1C1B18; --text-2: #6E6B65; --text-3: #9B9793;
+  --accent: #C5472A; --accent-bg: #FBF0ED;
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+}
+:root[data-theme="dark"] {
+  --bg: #131210; --surface: #1E1D1A; --surface-2: #252420;
+  --border: #2E2C28; --border-2: #3A3834;
+  --text-1: #EDEBE7; --text-2: #8A877F; --text-3: #5E5C57;
+  --accent: #D9573C; --accent-bg: #261A16;
+  --shadow-md: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text-1);
+  height: 100vh;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+button, input { font-family: inherit; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* ── Centered screens (setup / login) ───────────────────── */
+.center-screen {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.card {
+  max-width: 480px;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  padding: 32px;
+}
+
+.card-mark {
+  width: 32px;
+  height: 32px;
+  background: var(--accent);
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+
+.card h1 {
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+  text-wrap: balance;
+}
+
+.card p.lead {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.6;
+  margin-bottom: 22px;
+}
+
+.steps { list-style: none; counter-reset: step; }
+.steps li {
+  counter-increment: step;
+  display: flex;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  line-height: 1.6;
+}
+.steps li:first-child { border-top: none; }
+.steps li::before {
+  content: counter(step);
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  border-radius: 5px;
+  background: var(--accent-bg);
+  color: var(--accent);
+  font-size: 11.5px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.steps code {
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+.steps a { color: var(--accent); }
+
+.btn-primary {
+  width: 100%;
+  padding: 11px;
+  margin-top: 20px;
+  border: none;
+  background: var(--accent);
+  color: white;
+  font-size: 13.5px;
+  font-weight: 600;
+  border-radius: 7px;
+  cursor: pointer;
+  transition: filter 0.12s;
+}
+.btn-primary:hover { filter: brightness(1.08); }
+
+.hint {
+  margin-top: 14px;
+  font-size: 11.5px;
+  color: var(--text-3);
+  text-align: center;
+  line-height: 1.6;
+}
+
+/* ── App shell ───────────────────────────────────────────── */
+.app { display: flex; flex-direction: column; height: 100vh; }
+
+.topbar {
+  height: 50px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 18px;
+  gap: 14px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+.brand { display: flex; align-items: center; gap: 9px; }
+.brand-mark { width: 20px; height: 20px; background: var(--accent); border-radius: 3px; flex-shrink: 0; }
+.brand-name { font-size: 14px; font-weight: 700; letter-spacing: -0.03em; }
+.topbar-sep { width: 1px; height: 14px; background: var(--border-2); }
+.topbar-label { font-size: 11.5px; color: var(--text-3); }
+.topbar-spacer { flex: 1; }
+
+.icon-btn {
+  width: 30px; height: 30px; border: none; background: transparent;
+  color: var(--text-3); cursor: pointer; border-radius: 5px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.12s, color 0.12s;
+}
+.icon-btn:hover { background: var(--surface-2); color: var(--text-1); }
+.icon-btn.spinning svg { animation: spin 0.8s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .icon-btn.spinning svg { animation: none; } }
+
+.body { display: flex; flex: 1; overflow: hidden; }
+
+/* ── Sidebar ─────────────────────────────────────────────── */
+.sidebar {
+  width: 296px; flex-shrink: 0; background: var(--surface);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sidebar-head {
+  padding: 13px 16px 11px; border-bottom: 1px solid var(--border); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+}
+.sidebar-title { font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-3); }
+.sidebar-badge {
+  font-size: 11px; font-weight: 600; color: var(--accent); background: var(--accent-bg);
+  padding: 1px 8px; border-radius: 20px; font-variant-numeric: tabular-nums;
+}
+
+.sidebar-search { padding: 10px 16px; flex-shrink: 0; }
+.search-box {
+  display: flex; align-items: center; gap: 7px; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+  transition: border-color 0.12s;
+}
+.search-box:focus-within { border-color: var(--accent); }
+.search-box svg { color: var(--text-3); flex-shrink: 0; }
+.search-box input { border: none; background: transparent; outline: none; font-size: 12.5px; color: var(--text-1); width: 100%; }
+.search-box input::placeholder { color: var(--text-3); }
+.search-clear {
+  border: none; background: transparent; color: var(--text-3); cursor: pointer;
+  display: none; align-items: center; justify-content: center; flex-shrink: 0; padding: 0;
+}
+.search-clear.show { display: flex; }
+.search-clear:hover { color: var(--text-1); }
+
+.sidebar-tabs { display: flex; padding: 0 16px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.tab-btn {
+  padding: 0 2px 9px; background: none; border: none; border-bottom: 2px solid transparent;
+  font-size: 12px; font-weight: 600; color: var(--text-3); cursor: pointer;
+  transition: color 0.12s, border-color 0.12s; display: flex; align-items: center; gap: 5px; margin-right: 14px;
+}
+.tab-btn:hover { color: var(--text-1); }
+.tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+.tab-count { font-size: 10.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.tab-btn.active .tab-count { color: var(--accent); }
+
+.list-empty { padding: 40px 24px; text-align: center; color: var(--text-3); font-size: 12.5px; line-height: 1.6; }
+.list-empty.error { color: var(--accent); }
+
+.email-list { flex: 1; overflow-y: auto; padding: 3px 0; }
+.email-list::-webkit-scrollbar { width: 3px; }
+.email-list::-webkit-scrollbar-thumb { background: var(--border-2); border-radius: 2px; }
+.email-list::-webkit-scrollbar-track { background: transparent; }
+
+.email-item {
+  display: flex; align-items: flex-start; gap: 10px; padding: 10px 16px 10px 13px;
+  cursor: pointer; border-left: 3px solid transparent; transition: background 0.1s; position: relative;
+}
+.email-item:hover { background: var(--surface-2); }
+.email-item.active { background: var(--accent-bg); border-left-color: var(--accent); }
+
+.avatar {
+  width: 32px; height: 32px; border-radius: 4px; display: flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 800; color: white;
+  flex-shrink: 0; margin-top: 1px; letter-spacing: -0.02em;
+}
+
+.item-body { flex: 1; min-width: 0; }
+.item-row1 { display: flex; justify-content: space-between; align-items: center; gap: 4px; margin-bottom: 1px; }
+.item-sender { font-size: 12.5px; letter-spacing: -0.01em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.item-sender.unread { font-weight: 800; color: var(--text-1); }
+.item-sender.is-read { font-weight: 600; color: var(--text-2); }
+
+.item-meta { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+.unread-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.unread-dot.hidden { background: transparent; }
+.item-date { font-size: 11px; color: var(--text-3); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+
+.item-star {
+  width: 18px; height: 18px; display: flex; align-items: center; justify-content: center;
+  background: transparent; border: none; cursor: pointer; color: var(--border-2);
+  opacity: 0; transition: opacity 0.12s, color 0.12s, transform 0.1s; flex-shrink: 0; padding: 0;
+}
+.email-item:hover .item-star, .item-star.active { opacity: 1; }
+.item-star.active { color: var(--accent); }
+.item-star:hover { transform: scale(1.12); }
+.item-star svg { display: block; }
+
+.item-subject { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-bottom: 2px; line-height: 1.35; }
+.item-subject.unread { font-weight: 700; color: var(--text-1); }
+.item-subject.is-read { font-weight: 400; color: var(--text-2); }
+.item-snippet { font-size: 11.5px; color: var(--text-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.35; }
+
+.load-wrap { padding: 9px 14px 12px; border-top: 1px solid var(--border); flex-shrink: 0; }
+.btn-load {
+  width: 100%; padding: 7px; border: 1px solid var(--border-2); background: transparent;
+  color: var(--text-2); font-size: 12px; font-weight: 500; border-radius: 6px; cursor: pointer; transition: all 0.12s;
+}
+.btn-load:hover { background: var(--surface-2); color: var(--text-1); }
+.btn-load:disabled { opacity: 0.5; cursor: default; }
+
+/* ── Reader pane ─────────────────────────────────────────── */
+.reader { flex: 1; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
+.reader-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; color: var(--text-3); user-select: none; }
+.reader-empty-icon { width: 44px; height: 44px; background: var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.reader-empty-text { font-size: 13px; }
+
+.reader-info { background: var(--surface); border-bottom: 1px solid var(--border); padding: 14px 22px; display: flex; align-items: flex-start; gap: 12px; flex-shrink: 0; }
+.reader-avatar { width: 38px; height: 38px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800; color: white; flex-shrink: 0; }
+.reader-text { flex: 1; min-width: 0; }
+.reader-subject { font-size: 15px; font-weight: 700; letter-spacing: -0.025em; line-height: 1.3; margin-bottom: 4px; text-wrap: balance; }
+.reader-from { font-size: 12px; color: var(--text-2); line-height: 1.4; }
+.reader-from strong { color: var(--text-1); font-weight: 600; }
+.reader-acts { display: flex; gap: 4px; flex-shrink: 0; padding-top: 2px; }
+
+.btn-act {
+  padding: 5px 11px; border: 1px solid var(--border-2); background: transparent; color: var(--text-2);
+  font-size: 11.5px; font-weight: 500; border-radius: 5px; cursor: pointer; transition: all 0.12s;
+  white-space: nowrap; display: inline-flex; align-items: center; gap: 5px; text-decoration: none;
+}
+.btn-act:hover { background: var(--surface-2); color: var(--text-1); }
+.btn-act.active { border-color: var(--accent); color: var(--accent); background: var(--accent-bg); }
+.btn-act svg { display: block; flex-shrink: 0; }
+
+.reader-body { flex: 1; overflow: hidden; margin: 14px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow-md); position: relative; }
+.reader-frame { width: 100%; height: 100%; border: none; display: block; }
+.reader-loading { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-3); font-size: 12.5px; background: var(--surface); }
+</style>
+</head>
+<body>
+
+<!-- Screen: 설정 안내 (Client ID 없을 때) -->
+<div class="center-screen" id="screenSetup" hidden>
+  <div class="card">
+    <div class="card-mark"></div>
+    <h1>Google 로그인 설정이 필요해요</h1>
+    <p class="lead">이 앱이 Gmail에 접속하려면 Google Cloud에서 발급받은 클라이언트 ID가 필요합니다. 아래 순서대로 한 번만 설정하면 돼요.</p>
+    <ol class="steps">
+      <li><a href="https://console.cloud.google.com" target="_blank" rel="noopener">console.cloud.google.com</a>에서 새 프로젝트 생성</li>
+      <li>"API 및 서비스 → 라이브러리"에서 <strong>Gmail API</strong> 사용 설정</li>
+      <li>"OAuth 동의 화면"에서 테스트 사용자로 본인 Gmail 주소 추가 (게시 상태는 "테스트" 유지)</li>
+      <li>"사용자 인증 정보 → OAuth 클라이언트 ID 만들기" → 애플리케이션 유형: <strong>웹 애플리케이션</strong></li>
+      <li>승인된 자바스크립트 원본에 이 사이트 주소 추가 (예: <code id="originHint"></code>)</li>
+      <li>발급된 <strong>클라이언트 ID</strong>를 <code>app.js</code> 파일 맨 위 <code>CLIENT_ID</code> 값에 붙여넣기</li>
+    </ol>
+    <p class="hint">비밀 키가 아니라 클라이언트 ID만 필요합니다. 저장 후 이 페이지를 새로고침하세요.</p>
+  </div>
+</div>
+
+<!-- Screen: 로그인 -->
+<div class="center-screen" id="screenLogin" hidden>
+  <div class="card" style="text-align:center;">
+    <div class="card-mark" style="margin-left:auto;margin-right:auto;"></div>
+    <h1>뉴스레터 리더</h1>
+    <p class="lead">Gmail 계정으로 로그인하면 프로모션 탭에 있는 뉴스레터만 모아서 볼 수 있어요. 어떤 데이터도 서버에 저장되지 않고, 이 브라우저에서 Google과 직접 통신합니다.</p>
+    <button class="btn-primary" id="loginBtn">Gmail 연결하기</button>
+    <p class="hint" id="loginError"></p>
+  </div>
+</div>
+
+<!-- Screen: 메인 앱 -->
+<div class="app" id="screenApp" hidden>
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark"></div>
+      <span class="brand-name">뉴스레터</span>
+    </div>
+    <div class="topbar-sep"></div>
+    <span class="topbar-label">전용 뉴스레터 계정 · 받은편지함 전체</span>
+    <div class="topbar-spacer"></div>
+    <button class="icon-btn" id="refreshBtn" title="새로고침">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
+        <path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+      </svg>
+    </button>
+    <button class="icon-btn" id="themeBtn" title="테마 전환">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
+        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
+        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+      </svg>
+    </button>
+  </header>
+
+  <div class="body">
+    <aside class="sidebar">
+      <div class="sidebar-head">
+        <span class="sidebar-title">받은 뉴스레터</span>
+        <span class="sidebar-badge" id="sidebarBadge">0</span>
+      </div>
+
+      <div class="sidebar-search">
+        <div class="search-box">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input type="text" id="searchInput" placeholder="발신자, 제목으로 검색">
+          <button class="search-clear" id="searchClear" title="검색어 지우기">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <div class="sidebar-tabs">
+        <button class="tab-btn active" id="tabAll">전체</button>
+        <button class="tab-btn" id="tabBookmark">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+          </svg>
+          북마크
+        </button>
+      </div>
+
+      <div class="email-list" id="emailList"></div>
+
+      <div class="load-wrap">
+        <button class="btn-load" id="loadMoreBtn">이전 뉴스레터 더 보기</button>
+      </div>
+    </aside>
+
+    <main class="reader" id="reader">
+      <div class="reader-empty" id="emptyState">
+        <div class="reader-empty-icon">✉</div>
+        <span class="reader-empty-text">뉴스레터를 선택하면 여기서 읽을 수 있어요</span>
+      </div>
+    </main>
+  </div>
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>
